@@ -22,16 +22,19 @@ export const validateBody =
 
 export const validateParams =
   <T extends z.ZodType>(schema: T) =>
-  (req: Request<z.infer<T>>, res: Response, next: NextFunction) => {
+  (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.params);
+
     if (!result.success) {
       req.log.warn("Invalid parameters");
+
       return res.status(400).json({
         error: "Invalid parameters",
         details: z.flattenError(result.error).fieldErrors,
       });
     }
-    req.params = result.data;
+
+    res.locals.params = result.data;
     next();
   };
 

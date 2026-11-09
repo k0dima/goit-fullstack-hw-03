@@ -93,10 +93,10 @@ export const create = async (
 };
 
 export const getById = async (
-  req: Request<AnnouncementParams>,
-  res: Response,
+  req: Request,
+  res: Response<any, { params: AnnouncementParams }>,
 ) => {
-  const { id } = req.params;
+  const { id } = res.locals.params;
 
   const announcement = await prisma.announcement.findUnique({
     where: { id },
@@ -116,10 +116,10 @@ export const getById = async (
 };
 
 export const update = async (
-  req: Request<AnnouncementParams, {}, UpdateAnnouncement>,
-  res: Response,
+  req: Request<{}, {}, UpdateAnnouncement>,
+  res: Response<any, { params: AnnouncementParams }>,
 ) => {
-  const { id } = req.params;
+  const { id } = res.locals.params;
 
   const { title, description, price, category } = req.body;
   const imageUrl = req.file
@@ -166,10 +166,10 @@ export const update = async (
 };
 
 export const deleteItem = async (
-  req: Request<AnnouncementParams>,
-  res: Response,
+  req: Request,
+  res: Response<any, { params: AnnouncementParams }>,
 ) => {
-  const { id } = req.params;
+  const { id } = res.locals.params;
 
   const announcement = await prisma.announcement.findUnique({
     where: { id },
