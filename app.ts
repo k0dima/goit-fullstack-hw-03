@@ -119,10 +119,4 @@ app.use(async (err: any, req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "Internal server error" });
 });
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  logger.info(
-    `Server is running on port ${PORT}: http://localhost:${PORT}/api-docs`,
-  );
-});
+export default app;

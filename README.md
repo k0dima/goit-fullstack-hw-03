@@ -140,6 +140,7 @@ boilerplate/
 │   │   └── announcements.validator.ts
 │   └── openapi.ts
 ├── app.ts
+├── index.ts
 ├── .env.example
 ├── .env
 ├── package.json
@@ -163,6 +164,7 @@ boilerplate/
 
 | Команда                   | Опис                                 |
 | ------------------------- | ------------------------------------ |
+| `npm test`                | Запуск тестів Vitest                  |
 | `npm run dev`             | Запуск з hot reload (`node --watch`) |
 | `npm start`               | Запуск у виробничому режимі          |
 | `npm run prisma:migrate`  | Створення та застосування міграцій   |
