@@ -12,6 +12,7 @@ import {
   GetAnnouncementsQuerySchema,
   UpdateAnnouncementSchema,
 } from "../validators/announcements.validator.ts";
+import { upload } from "../middleware/upload.ts";
 
 const router = Router();
 
@@ -23,6 +24,7 @@ router.get(
 router.post(
   "/",
   authenticate,
+  upload.single("image"),
   validateBody(CreateAnnouncementSchema),
   announcementsController.create,
 );
@@ -34,6 +36,7 @@ router.get(
 router.patch(
   "/:id",
   authenticate,
+  upload.single("image"),
   validateParams(AnnouncementParamsSchema),
   validateBody(UpdateAnnouncementSchema),
   announcementsController.update,

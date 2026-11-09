@@ -10,6 +10,7 @@ import type {
   UpdateAnnouncement,
 } from "../validators/announcements.validator.ts";
 import type { Prisma } from "../../generated/prisma/client.ts";
+import { uploadImage } from "../services/image.service.ts";
 
 const safeUserSelectInput = {
   id: true,
@@ -70,6 +71,9 @@ export const create = async (
   res: Response,
 ) => {
   const { title, description, price, category } = req.body;
+  const imageUrl = req.file
+    ? await uploadImage(req.file.path)
+    : null;
 
   const announcement = await prisma.announcement.create({
     data: {
@@ -77,6 +81,7 @@ export const create = async (
       description,
       price,
       category,
+      imageUrl,
       user: {
         connect: { id: Number(req.user!.sub) },
       },
@@ -117,6 +122,10 @@ export const update = async (
   const { id } = req.params;
 
   const { title, description, price, category } = req.body;
+  const imageUrl = req.file
+    ? await uploadImage(req.file.path)
+    : null;
+
 
   const announcement = await prisma.announcement.findUnique({
     where: { id },
@@ -143,6 +152,7 @@ export const update = async (
       title,
       description,
       price,
+      imageUrl,
       category,
     },
     include: {
