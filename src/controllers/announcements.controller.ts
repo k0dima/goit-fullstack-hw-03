@@ -53,6 +53,7 @@ export const getAll = async (
     prisma.announcement.count({ where }),
   ]);
 
+  req.log.info("Fetched list of announcements with pagination metadata");
   res.status(200).json({
     data: announcements,
     pagination: {
@@ -82,7 +83,7 @@ export const create = async (
     },
     include: { user: { select: safeUserSelectInput } },
   });
-
+  req.log.info("nnouncement created successfully");
   res.status(201).json(announcement);
 };
 
@@ -102,9 +103,10 @@ export const getById = async (
   });
 
   if (!announcement) {
+    req.log.warn("Announcement not found");
     throw createHttpError(404, "Announcement not found");
   }
-
+  req.log.info("Announcement retrieved successfully");
   res.status(200).json(announcement);
 };
 
@@ -126,10 +128,12 @@ export const update = async (
   });
 
   if (!announcement) {
+    req.log.warn("Announcement not found");
     throw createHttpError(404, "Announcement not found");
   }
 
   if (announcement.user.id !== Number(req.user!.sub)) {
+    req.log.warn("Access denied");
     throw createHttpError(403, "Access denied");
   }
 
@@ -147,7 +151,7 @@ export const update = async (
       },
     },
   });
-
+  req.log.info("Announcement updated successfully");
   res.status(200).json(updatedAnnouncement);
 };
 
@@ -167,16 +171,18 @@ export const deleteItem = async (
   });
 
   if (!announcement) {
+    req.log.warn("Announcement not found");
     throw createHttpError(404, "Announcement not found");
   }
 
   if (announcement.user.id !== Number(req.user!.sub)) {
+    req.log.warn("Access denied");
     throw createHttpError(403, "Access denied");
   }
 
   await prisma.announcement.delete({
     where: { id },
   });
-
+  req.log.info("Announcement deleted successfully");
   res.status(204).end();
 };

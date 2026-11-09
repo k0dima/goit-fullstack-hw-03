@@ -3,7 +3,11 @@ import createHttpError from "http-errors";
 import jwt from "jsonwebtoken";
 import type { Request, Response } from "express";
 import prisma from "../../prisma/client.ts";
-import { createTokens, replaceRefreshToken, setRefreshTokenCookie } from "../services/auth.ts";
+import {
+  createTokens,
+  replaceRefreshToken,
+  setRefreshTokenCookie,
+} from "../services/auth.ts";
 import { REFRESH_TOKEN_LIFETIME } from "../constants/time.ts";
 import type { RegisterBody, LoginBody } from "../validators/auth.validator.ts";
 
@@ -13,15 +17,16 @@ export const me = async (req: Request, res: Response) => {
   });
 
   if (!user) {
+    req.log.warn("Invalid credentials");
     throw createHttpError(401, "Invalid credentials");
   }
-
+  req.log.info("Fetched the current user profile");
   res.status(200).json({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      name: user.name,
-      createdAt: user.createdAt,
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    name: user.name,
+    createdAt: user.createdAt,
   });
 };
 
@@ -38,24 +43,32 @@ export const register = async (
   });
 
   if (existingUser) {
+    req.log.warn("Username or email already taken");
     throw createHttpError(409, "Username or email already taken");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.create({
-    data: { username, email, password: hashedPassword, name },
-  }).catch((error: unknown) => {
-    if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
-      throw createHttpError(409, "Username or email already taken");
-    }
-    throw error;
-  });
+  const user = await prisma.user
+    .create({
+      data: { username, email, password: hashedPassword, name },
+    })
+    .catch((error: unknown) => {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "P2002"
+      ) {
+        throw createHttpError(409, "Username or email already taken");
+      }
+      throw error;
+    });
 
   const { accessToken, refreshToken } = createTokens(user.id);
   await replaceRefreshToken(user.id, refreshToken);
   setRefreshTokenCookie(res, refreshToken);
-
+  req.log.info("User registered successfully");
   res.status(201).json({
     accessToken,
     refreshToken,
@@ -76,19 +89,21 @@ export const login = async (req: Request<{}, {}, LoginBody>, res: Response) => {
   });
 
   if (!user) {
+    req.log.warn("Invalid credentials");
     throw createHttpError(401, "Invalid credentials");
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
+    req.log.warn("Invalid credentials");
     throw createHttpError(401, "Invalid credentials");
   }
 
   const { accessToken, refreshToken } = createTokens(user.id);
   await replaceRefreshToken(user.id, refreshToken);
   setRefreshTokenCookie(res, refreshToken);
-
+  req.log.info("Login successful");
   res.status(200).json({
     accessToken,
     refreshToken,
@@ -105,17 +120,23 @@ export const refresh = async (req: Request, res: Response) => {
   const refreshToken = req.body?.refreshToken ?? req.cookies?.refreshToken;
 
   if (typeof refreshToken !== "string" || !refreshToken) {
+    req.log.warn("Refresh token not provided");
     throw createHttpError(401, "Refresh token not provided");
   }
 
   let payload: jwt.JwtPayload;
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET!);
-    if (typeof decoded === "string" || decoded.type !== "refresh" || !/^[1-9]\d*$/.test(decoded.sub ?? "")) {
+    if (
+      typeof decoded === "string" ||
+      decoded.type !== "refresh" ||
+      !/^[1-9]\d*$/.test(decoded.sub ?? "")
+    ) {
       throw new Error("Invalid refresh token");
     }
     payload = decoded;
   } catch {
+    req.log.warn("Invalid refresh token");
     throw createHttpError(401, "Invalid refresh token");
   }
 
@@ -125,13 +146,20 @@ export const refresh = async (req: Request, res: Response) => {
     const deleted = await tx.refreshToken.deleteMany({
       where: { token: refreshToken, userId, expiresAt: { gt: new Date() } },
     });
-    if (deleted.count !== 1) throw createHttpError(401, "Invalid refresh token");
-    await tx.refreshToken.create({ data: {
-      userId, token: newTokens.refreshToken, expiresAt: new Date(Date.now() + REFRESH_TOKEN_LIFETIME),
-    } });
+    if (deleted.count !== 1) {
+      req.log.warn("Invalid refresh token");
+      throw createHttpError(401, "Invalid refresh token");
+    }
+    await tx.refreshToken.create({
+      data: {
+        userId,
+        token: newTokens.refreshToken,
+        expiresAt: new Date(Date.now() + REFRESH_TOKEN_LIFETIME),
+      },
+    });
   });
   setRefreshTokenCookie(res, newTokens.refreshToken);
-
+  req.log.info("Tokens refreshed successfully");
   res.status(200).json({
     accessToken: newTokens.accessToken,
     refreshToken: newTokens.refreshToken,
@@ -139,13 +167,15 @@ export const refresh = async (req: Request, res: Response) => {
 };
 
 export const logout = async (req: Request, res: Response) => {
-  await prisma.refreshToken.deleteMany({ where: { userId: Number(req.user!.sub) } });
+  await prisma.refreshToken.deleteMany({
+    where: { userId: Number(req.user!.sub) },
+  });
 
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
   });
-
+  req.log.info("Logged out successfully");
   res.status(204).end();
 };
