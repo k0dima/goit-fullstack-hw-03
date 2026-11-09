@@ -1,4 +1,5 @@
 import { z } from "zod";
+import createHttpError from "http-errors";
 import type { Request, Response, NextFunction } from "express";
 
 export const validateBody =
@@ -8,13 +9,11 @@ export const validateBody =
     if (!result.success) {
       req.log.warn("Validation failed");
       const flattened = z.flattenError(result.error);
-      return res.status(422).json({
-        error: "Validation failed",
-        details:
-          Object.keys(flattened.fieldErrors).length > 0
-            ? flattened.fieldErrors
-            : flattened.formErrors,
-      });
+      return next(createHttpError(422, "Validation failed", {
+        details: Object.keys(flattened.fieldErrors).length > 0
+          ? flattened.fieldErrors
+          : flattened.formErrors,
+      }));
     }
     req.body = result.data;
     next();
@@ -28,10 +27,9 @@ export const validateParams =
     if (!result.success) {
       req.log.warn("Invalid parameters");
 
-      return res.status(400).json({
-        error: "Invalid parameters",
+      return next(createHttpError(400, "Invalid parameters", {
         details: z.flattenError(result.error).fieldErrors,
-      });
+      }));
     }
 
     res.locals.params = result.data;

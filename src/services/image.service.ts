@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import { v2 as cloudinary } from "cloudinary";
+import { logger } from "../logger.ts";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -8,13 +9,10 @@ cloudinary.config({
 });
 
 export const uploadImage = async (filePath: string) => {
-  try {
-    const result = await cloudinary.uploader.upload(filePath, {
-      folder: "announcements",
-    });
-
-    return result.secure_url;
-  } finally {
-    await fs.unlink(filePath).catch(() => {});
-  }
+  const result = await cloudinary.uploader.upload(filePath, {
+    folder: "announcements",
+  });
+  await fs.unlink(filePath);
+  logger.info("Announcement photo uploaded");
+  return result.secure_url;
 };

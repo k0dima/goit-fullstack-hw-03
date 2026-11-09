@@ -45,6 +45,10 @@ cp .env.example .env
 ```env
 DATABASE_URL=postgresql://postgres:password@localhost:5432/announcements?schema=public
 JWT_SECRET=your-secret-key-at-least-256-bits-long
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 
 4. Застосуйте міграцію:
@@ -111,7 +115,7 @@ npm run dev
 | `price`       | ціле число, обов'язкове, не менше 0                    |
 | `category`    | рядок, обов'язковий: `sale`, `service`, `job`, `other` |
 
-PATCH використовує ті ж правила валідації, але всі поля опціональні (хоча б одне має бути присутнє).
+POST і PATCH підтримують `multipart/form-data`: фото передається необов’язковим файлом у полі `image` (до 5 МБ), а `price` — текстовим полем із цілим числом. JSON-запити без фото також підтримуються. PATCH використовує ті ж правила валідації, але всі поля опціональні: потрібно передати хоча б одне поле або фото. Без нового фото наявне зображення зберігається.
 
 ## Структура проекту
 

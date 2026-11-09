@@ -71,9 +71,7 @@ export const create = async (
   res: Response,
 ) => {
   const { title, description, price, category } = req.body;
-  const imageUrl = req.file
-    ? await uploadImage(req.file.path)
-    : null;
+  const imageUrl = req.file ? await uploadImage(req.file.path) : null;
 
   const announcement = await prisma.announcement.create({
     data: {
@@ -88,7 +86,7 @@ export const create = async (
     },
     include: { user: { select: safeUserSelectInput } },
   });
-  req.log.info("nnouncement created successfully");
+  req.log.info("Announcement created successfully");
   res.status(201).json(announcement);
 };
 
@@ -122,10 +120,12 @@ export const update = async (
   const { id } = res.locals.params;
 
   const { title, description, price, category } = req.body;
-  const imageUrl = req.file
-    ? await uploadImage(req.file.path)
-    : null;
-
+  if (!req.file && Object.keys(req.body).length === 0) {
+    res.log.warn("Validation failed");
+    throw createHttpError(422, "Validation failed", {
+      details: ["At least one field or image must be provided"],
+    });
+  }
 
   const announcement = await prisma.announcement.findUnique({
     where: { id },
@@ -145,6 +145,8 @@ export const update = async (
     req.log.warn("Access denied");
     throw createHttpError(403, "Access denied");
   }
+
+  const imageUrl = req.file ? await uploadImage(req.file.path) : undefined;
 
   const updatedAnnouncement = await prisma.announcement.update({
     where: { id },

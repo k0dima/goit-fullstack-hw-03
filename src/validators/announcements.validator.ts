@@ -23,17 +23,12 @@ const announcementPayload = {
   category: z.enum(["sale", "service", "job", "other"]),
 };
 export const CreateAnnouncementSchema = registry.register(
-  "CreacteAnnouncement",
+  "CreateAnnouncement",
   z.object(announcementPayload),
 );
 export const UpdateAnnouncementSchema = registry.register(
   "UpdateAnnouncement",
-  z
-    .object(announcementPayload)
-    .partial()
-    .refine((data) => Object.keys(data).length > 0, {
-      error: "At least one field must be provided",
-    }),
+  z.object(announcementPayload).partial(),
 );
 
 export type getAnnouncementsQuery = z.infer<typeof GetAnnouncementsQuerySchema>;
@@ -62,7 +57,9 @@ registry.registerPath({
   security: [{ bearerAuth: [] }],
   request: {
     body: {
-      content: { "application/json": { schema: CreateAnnouncementSchema } },
+      content: { "multipart/form-data": { schema: CreateAnnouncementSchema.extend({
+        image: z.string().optional().openapi({ type: "string", format: "binary" }),
+      }) } },
     },
   },
   responses: {
@@ -94,7 +91,9 @@ registry.registerPath({
   request: {
     params: AnnouncementParamsSchema,
     body: {
-      content: { "application/json": { schema: UpdateAnnouncementSchema } },
+      content: { "multipart/form-data": { schema: UpdateAnnouncementSchema.extend({
+        image: z.string().optional().openapi({ type: "string", format: "binary" }),
+      }) } },
     },
   },
   responses: {

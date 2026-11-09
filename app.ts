@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import swaggerUi from "swagger-ui-express";
@@ -6,6 +7,8 @@ import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { pinoHttp } from "pino-http";
 import helmet from "helmet";
+import multer from "multer";
+import fs from "fs/promises";
 
 import authRouter from "./src/routes/auth.routes.ts";
 import announcementsRouter from "./src/routes/announcements.routes.ts";
@@ -16,14 +19,6 @@ import { logger } from "./src/logger.ts";
 const app = express();
 
 
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 100,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: { error: "Too many requests, please try again later" },
-});
-
 const strictLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
@@ -32,7 +27,10 @@ const strictLimiter = rateLimit({
   message: { error: "Too many requests, please try again later" },
 });
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.use(pinoHttp({ logger }));
 
@@ -41,11 +39,13 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(Object.assign(new Error("Origin not allowed"), { status: 403 }));
+  },
   credentials: true,
 }));
 
-app.use(globalLimiter);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -61,7 +61,22 @@ app.use((_req: Request, res: Response) => {
 });
 
 // Error handling middleware
-app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
+app.use(async (err: any, req: Request, res: Response, _next: NextFunction) => {
+  if (req.file) {
+    try {
+      await fs.unlink(req.file.path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        req.log.error({ err: error }, "Failed to remove temporary upload");
+      }
+    }
+  }
+
+  if (err instanceof multer.MulterError) {
+    req.log.warn({ err }, "Upload rejected");
+    return res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ error: err.message });
+  }
+
   if (err.type === "entity.parse.failed") {
     req.log.warn("Validation failed");
 
@@ -76,7 +91,10 @@ app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
   if (err.status && err.status >= 400 && err.status < 500) {
     req.log.warn(err.message);
 
-    return res.status(err.status).json({ error: err.message });
+    return res.status(err.status).json({
+      error: err.message,
+      ...(err.details !== undefined && { details: err.details }),
+    });
   }
 
   if (err.code === "P2025") {
