@@ -1,0 +1,63 @@
+@baseUrl = http://localhost:3000/api
+
+### Реєстрація: змініть username та email, якщо вони вже зайняті
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "test_user",
+  "email": "test_user@example.com",
+  "password": "password123",
+  "name": "Test User"
+}
+
+### Вхід з користувачем із seed: виконайте перед запитами з авторизацією
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "username1",
+  "password": "password"
+}
+
+### Список оголошень
+GET {{baseUrl}}/announcements
+
+### Створення оголошення з фото
+# @name createAnnouncement
+POST {{baseUrl}}/announcements
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: multipart/form-data; boundary=AnnouncementBoundary
+
+--AnnouncementBoundary
+Content-Disposition: form-data; name="title"
+
+Продам велосипед
+--AnnouncementBoundary
+Content-Disposition: form-data; name="description"
+
+Велосипед у гарному стані
+--AnnouncementBoundary
+Content-Disposition: form-data; name="price"
+
+8500
+--AnnouncementBoundary
+Content-Disposition: form-data; name="category"
+
+sale
+--AnnouncementBoundary
+Content-Disposition: form-data; name="image"; filename="photo.jpg"
+Content-Type: image/jpeg
+
+< ./photo.jpg
+--AnnouncementBoundary--
+
+### Оновлення створеного оголошення без заміни фото
+PATCH {{baseUrl}}/announcements/{{createAnnouncement.response.body.id}}
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "title": "Оновлене оголошення"
+}

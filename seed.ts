@@ -29,6 +29,7 @@ async function main() {
           description: `Description for announcement ${i}`,
           price: Math.floor(Math.random() * 1000) + 1,
           category: categories[Math.floor(Math.random() * categories.length)],
+          imageUrl: i % 2 === 0 ? "https://res.cloudinary.com/demo/image/upload/sample.jpg" : null,
           userId: user.id,
         },
       });
